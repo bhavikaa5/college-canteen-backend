@@ -13,8 +13,13 @@ const PORT = process.env.PORT || 5000;
 // Connect to MongoDB
 connectDB();
 
-// Middleware
-app.use(cors());
+// ✅ Apply CORS Middleware Before Routes
+app.use(cors({ 
+  origin: "https://college-canteen-frontend.vercel.app",
+  methods: "GET,POST,PUT,DELETE",
+  allowedHeaders: "Content-Type,Authorization"
+}));
+
 app.use(express.json());
 
 // API Routes for Dishes
@@ -150,12 +155,12 @@ app.put('/api/orders/:id', async (req, res) => {
   }
 });
 
-// Health check route
+// ✅ Health Check Route
 app.get('/', (req, res) => {
   res.send('College Canteen API is running');
 });
 
-// Start server
+// ✅ Start Server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
