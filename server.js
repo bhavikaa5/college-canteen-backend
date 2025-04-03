@@ -1,122 +1,153 @@
 const express = require('express');
 const cors = require('cors');
+const connectDB = require('./db');
+require('dotenv').config();
+
+// Import models
+const Dish = require('./models/Dish');
+const Order = require('./models/Order');
+
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Connect to MongoDB
+connectDB();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// Sample dishes data
-const dishes = [
-  {
-    id: 1,
-    name: "Classic Cheese Burger",
-    description: "Juicy beef patty with melted cheddar, lettuce, tomato, and our special sauce",
-    price: 5.99,
-    image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
-  },
-  {
-    id: 2,
-    name: "Crispy Chicken Wrap",
-    description: "Crispy chicken strips with fresh veggies and ranch dressing in a tortilla wrap",
-    price: 4.99,
-    image: "https://images.unsplash.com/photo-1551782450-17144efb9c50?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
-  },
-  {
-    id: 3,
-    name: "Vegetable Pasta",
-    description: "Penne pasta with seasonal vegetables in creamy alfredo sauce",
-    price: 6.49,
-    image: "https://images.unsplash.com/photo-1473093295043-cdd812d0e601?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
-  },
-  {
-    id: 4,
-    name: "Loaded Nachos",
-    description: "Corn chips topped with melted cheese, beans, jalapeños, and sour cream",
-    price: 4.49,
-    image: "https://images.unsplash.com/photo-1513456852971-30c0b8199d4d?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
-  },
-  {
-    id: 5,
-    name: "Breakfast Burrito",
-    description: "Scrambled eggs, bacon, cheese, and hash browns in a large flour tortilla",
-    price: 3.99,
-    image: "https://images.unsplash.com/photo-1584178639036-613ba57e5e39?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
-  },
-  {
-    id: 6,
-    name: "Grilled Cheese Sandwich",
-    description: "Classic comfort food with three types of cheese on toasted sourdough",
-    price: 3.49,
-    image: "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
-  },
-  {
-    id: 7,
-    name: "Caesar Salad",
-    description: "Crisp romaine, parmesan cheese, croutons, and creamy Caesar dressing",
-    price: 4.99,
-    image: "https://images.unsplash.com/photo-1550304943-4f24f54ddde9?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
-  },
-  {
-    id: 8,
-    name: "Pepperoni Pizza Slice",
-    description: "Large slice of pizza with pepperoni, mozzarella, and our signature sauce",
-    price: 2.99,
-    image: "https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
-  },
-  {
-    id: 9,
-    name: "French Fries",
-    description: "Crispy golden fries with your choice of seasoning and dipping sauce",
-    price: 1.99,
-    image: "https://images.unsplash.com/photo-1585109649139-366815a0d713?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
-  },
-  {
-    id: 10,
-    name: "Chocolate Brownie",
-    description: "Rich, fudgy brownie topped with vanilla ice cream and chocolate sauce",
-    price: 3.49,
-    image: "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
+// API Routes for Dishes
+app.get('/api/dishes', async (req, res) => {
+  try {
+    const dishes = await Dish.find();
+    res.json(dishes);
+  } catch (error) {
+    console.error('Error fetching dishes:', error);
+    res.status(500).json({ error: 'Server error' });
   }
-];
-
-// API Routes
-app.get('/api/dishes', (req, res) => {
-  res.json(dishes);
 });
 
-app.get('/api/dishes/:id', (req, res) => {
-  const dish = dishes.find(d => d.id === parseInt(req.params.id));
-  if (!dish) return res.status(404).json({ error: "Dish not found" });
-  res.json(dish);
+app.get('/api/dishes/:id', async (req, res) => {
+  try {
+    const dish = await Dish.findById(req.params.id);
+    if (!dish) {
+      return res.status(404).json({ error: "Dish not found" });
+    }
+    res.json(dish);
+  } catch (error) {
+    console.error('Error fetching dish:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
-// Orders API - in a real app, this would connect to a database
-let orders = [];
-
-app.post('/api/orders', (req, res) => {
-  const { items, totalPrice, customerInfo } = req.body;
-  
-  if (!items || !items.length || !totalPrice || !customerInfo) {
-    return res.status(400).json({ error: "Missing required order information" });
+app.post('/api/dishes', async (req, res) => {
+  try {
+    const newDish = new Dish(req.body);
+    const savedDish = await newDish.save();
+    res.status(201).json(savedDish);
+  } catch (error) {
+    console.error('Error creating dish:', error);
+    res.status(400).json({ error: error.message });
   }
-  
-  const newOrder = {
-    id: Date.now(),
-    items,
-    totalPrice,
-    customerInfo,
-    status: "pending",
-    createdAt: new Date()
-  };
-  
-  orders.push(newOrder);
-  
-  res.status(201).json({ 
-    message: "Order created successfully", 
-    orderId: newOrder.id 
-  });
+});
+
+app.put('/api/dishes/:id', async (req, res) => {
+  try {
+    const updatedDish = await Dish.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+    if (!updatedDish) {
+      return res.status(404).json({ error: "Dish not found" });
+    }
+    res.json(updatedDish);
+  } catch (error) {
+    console.error('Error updating dish:', error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.delete('/api/dishes/:id', async (req, res) => {
+  try {
+    const dish = await Dish.findByIdAndDelete(req.params.id);
+    if (!dish) {
+      return res.status(404).json({ error: "Dish not found" });
+    }
+    res.json({ message: "Dish deleted successfully" });
+  } catch (error) {
+    console.error('Error deleting dish:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// API Routes for Orders
+app.post('/api/orders', async (req, res) => {
+  try {
+    const { items, totalPrice, customerInfo } = req.body;
+    
+    if (!items || !items.length || !totalPrice || !customerInfo) {
+      return res.status(400).json({ error: "Missing required order information" });
+    }
+    
+    const newOrder = new Order({
+      items,
+      totalPrice,
+      customerInfo,
+      status: "pending"
+    });
+    
+    const savedOrder = await newOrder.save();
+    
+    res.status(201).json({ 
+      message: "Order created successfully", 
+      orderId: savedOrder._id 
+    });
+  } catch (error) {
+    console.error('Error creating order:', error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.get('/api/orders', async (req, res) => {
+  try {
+    const orders = await Order.find().sort({ createdAt: -1 });
+    res.json(orders);
+  } catch (error) {
+    console.error('Error fetching orders:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.get('/api/orders/:id', async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+    res.json(order);
+  } catch (error) {
+    console.error('Error fetching order:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.put('/api/orders/:id', async (req, res) => {
+  try {
+    const updatedOrder = await Order.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+    if (!updatedOrder) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+    res.json(updatedOrder);
+  } catch (error) {
+    console.error('Error updating order:', error);
+    res.status(400).json({ error: error.message });
+  }
 });
 
 // Health check route
